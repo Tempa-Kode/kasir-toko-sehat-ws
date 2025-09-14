@@ -12,3 +12,5 @@ Route::post(
     '/login',
      \App\Http\Controllers\Api\Auth\LoginController::class
 );
+
+Route::resource('satuan', \App\Http\Controllers\SatuanController::class)->middleware('auth:sanctum');
