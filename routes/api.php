@@ -14,3 +14,4 @@ Route::post(
 );
 
 Route::resource('satuan', \App\Http\Controllers\Api\SatuanController::class)->middleware('auth:sanctum');
+Route::resource('kategori-produk', \App\Http\Controllers\Api\KategoriProdukController::class)->middleware('auth:sanctum');
