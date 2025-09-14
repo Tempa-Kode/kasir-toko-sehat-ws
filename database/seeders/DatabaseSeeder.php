@@ -13,11 +13,36 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call(SatuanSeeder::class);
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        // Admin
+        User::create([
+            'nama' => 'admin',
+            'username' => 'admin',
+            'password' => bcrypt('admin123'),
+            'hak_akses' => 'admin',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Pemilik
+        User::create([
+            'nama' => 'pemilik',
+            'username' => 'pemilik',
+            'password' => bcrypt('pemilik123'),
+            'hak_akses' => 'pemilik',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Kasir
+        User::create([
+            'nama' => 'kasir',
+            'username' => 'kasir',
+            'password' => bcrypt('kasir123'),
+            'hak_akses' => 'kasir',
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 }
