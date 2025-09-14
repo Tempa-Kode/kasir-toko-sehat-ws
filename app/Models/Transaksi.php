@@ -20,4 +20,9 @@ class Transaksi extends Model
     {
         return $this->belongsTo(User::class, 'kasir_id');
     }
+
+    public function detailTransaksis()
+    {
+        return $this->hasMany(DetailTransaksi::class, 'transaksi_id');
+    }
 }
