@@ -15,3 +15,8 @@ Route::post(
 
 Route::resource('satuan', \App\Http\Controllers\Api\SatuanController::class)->middleware('auth:sanctum');
 Route::resource('kategori-produk', \App\Http\Controllers\Api\KategoriProdukController::class)->middleware('auth:sanctum');
+Route::prefix('produk')->group( function () {
+    Route::patch('{id}/stock', [\App\Http\Controllers\ProdukController::class, 'updateStock']);
+    Route::get('search', [\App\Http\Controllers\ProdukController::class, 'search']);
+})->middleware('auth:sanctum');
+Route::resource('produk', \App\Http\Controllers\ProdukController::class)->middleware('auth:sanctum');
