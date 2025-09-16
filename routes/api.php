@@ -20,3 +20,4 @@ Route::prefix('produk')->group( function () {
     Route::get('search', [\App\Http\Controllers\ProdukController::class, 'search']);
 })->middleware('auth:sanctum');
 Route::resource('produk', \App\Http\Controllers\ProdukController::class)->middleware('auth:sanctum');
+Route::resource('transaksi', \App\Http\Controllers\TransaksiController::class)->middleware('auth:sanctum');

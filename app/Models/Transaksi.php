@@ -13,6 +13,8 @@ class Transaksi extends Model
         'no_nota',
         'tgl_transaksi',
         'harga_total',
+        'dibayar',
+        'kembalian',
         'kasir_id',
     ];
 
