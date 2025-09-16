@@ -21,3 +21,9 @@ Route::prefix('produk')->group( function () {
 })->middleware('auth:sanctum');
 Route::resource('produk', \App\Http\Controllers\ProdukController::class)->middleware('auth:sanctum');
 Route::resource('transaksi', \App\Http\Controllers\TransaksiController::class)->middleware('auth:sanctum');
+
+Route::prefix('users')->group(function () {
+    Route::post('search', [\App\Http\Controllers\UserController::class, 'search']);
+    Route::patch('{id}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
+})->middleware('auth:sanctum');
+Route::apiResource('users', \App\Http\Controllers\UserController::class)->except(['store'])->middleware('auth:sanctum');
