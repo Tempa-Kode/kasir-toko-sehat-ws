@@ -27,3 +27,13 @@ Route::prefix('users')->group(function () {
     Route::patch('{id}/change-password', [\App\Http\Controllers\UserController::class, 'changePassword']);
 })->middleware('auth:sanctum');
 Route::apiResource('users', \App\Http\Controllers\UserController::class)->except(['store'])->middleware('auth:sanctum');
+
+// Laporan Transaksi
+Route::prefix('laporan')->group(function () {
+    Route::post('periode', [\App\Http\Controllers\LaporanController::class, 'laporanPeriode']);
+    Route::post('periode/pdf', [\App\Http\Controllers\LaporanController::class, 'exportPeriodePdf']);
+    Route::post('bulanan', [\App\Http\Controllers\LaporanController::class, 'laporanBulanan']);
+    Route::post('bulanan/pdf', [\App\Http\Controllers\LaporanController::class, 'exportBulananPdf']);
+    Route::post('produk-terlaris', [\App\Http\Controllers\LaporanController::class, 'produkTerlaris']);
+    Route::post('produk-terlaris/pdf', [\App\Http\Controllers\LaporanController::class, 'exportProdukTerlarisPdf']);
+})->middleware('auth:sanctum');
