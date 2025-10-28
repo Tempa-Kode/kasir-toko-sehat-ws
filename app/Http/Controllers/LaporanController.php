@@ -578,4 +578,530 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Statistik penjualan tahun ini (per bulan)
+     * Data untuk Chart.js - Trend penjualan bulanan tahun berjalan
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistikTahunan(Request $request)
+    {
+        try {
+            $tahun = $request->input('tahun', date('Y'));
+
+            // Validasi tahun
+            if ($tahun < 2000 || $tahun > 2100) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tahun tidak valid.'
+                ], 422);
+            }
+
+            // Ambil data transaksi per bulan dalam tahun ini
+            $transaksi = Transaksi::select(
+                    DB::raw('MONTH(tgl_transaksi) as bulan'),
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan'),
+                    DB::raw('YEAR(tgl_transaksi) as tahun')
+                )
+                ->whereYear('tgl_transaksi', $tahun)
+                ->groupBy('tahun', 'bulan')
+                ->orderBy('bulan', 'asc')
+                ->get();
+
+            // Inisialisasi array untuk 12 bulan
+            $namaBulan = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'];
+            $labels = [];
+            $dataTransaksi = [];
+            $dataPendapatan = [];
+
+            // Isi data untuk semua bulan (0 jika tidak ada data)
+            for ($i = 1; $i <= 12; $i++) {
+                $labels[] = $namaBulan[$i - 1];
+
+                $found = $transaksi->firstWhere('bulan', $i);
+                $dataTransaksi[] = $found ? (int)$found->total_transaksi : 0;
+                $dataPendapatan[] = $found ? (float)$found->total_pendapatan : 0;
+            }
+
+            // Hitung total dan rata-rata
+            $totalTransaksi = array_sum($dataTransaksi);
+            $totalPendapatan = array_sum($dataPendapatan);
+            $rataRataPerBulan = $totalTransaksi > 0 ? $totalPendapatan / count(array_filter($dataTransaksi)) : 0;
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Statistik penjualan tahunan berhasil diambil.',
+                'periode' => [
+                    'type' => 'yearly',
+                    'tahun' => $tahun,
+                ],
+                'chart_data' => [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Jumlah Transaksi',
+                            'data' => $dataTransaksi,
+                            'backgroundColor' => 'rgba(54, 162, 235, 0.5)',
+                            'borderColor' => 'rgba(54, 162, 235, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4
+                        ],
+                        [
+                            'label' => 'Total Pendapatan (Rp)',
+                            'data' => $dataPendapatan,
+                            'backgroundColor' => 'rgba(75, 192, 192, 0.5)',
+                            'borderColor' => 'rgba(75, 192, 192, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4,
+                            'yAxisID' => 'y1'
+                        ]
+                    ]
+                ],
+                'summary' => [
+                    'total_transaksi' => $totalTransaksi,
+                    'total_pendapatan' => $totalPendapatan,
+                    'rata_rata_per_bulan' => round($rataRataPerBulan, 2),
+                    'bulan_terbaik' => [
+                        'bulan' => $labels[array_search(max($dataPendapatan), $dataPendapatan)] ?? null,
+                        'pendapatan' => max($dataPendapatan)
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil statistik penjualan tahunan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Statistik penjualan bulan ini (per hari)
+     * Data untuk Chart.js - Trend penjualan harian bulan berjalan
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistikBulanan(Request $request)
+    {
+        try {
+            $bulan = $request->input('bulan', date('n'));
+            $tahun = $request->input('tahun', date('Y'));
+
+            // Validasi
+            if ($bulan < 1 || $bulan > 12 || $tahun < 2000 || $tahun > 2100) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Bulan atau tahun tidak valid.'
+                ], 422);
+            }
+
+            $tanggalAwal = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth();
+            $tanggalAkhir = Carbon::createFromDate($tahun, $bulan, 1)->endOfMonth();
+            $jumlahHari = $tanggalAkhir->day;
+
+            // Ambil data transaksi per hari dalam bulan ini
+            $transaksi = Transaksi::select(
+                    DB::raw('DAY(tgl_transaksi) as hari'),
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->groupBy('hari')
+                ->orderBy('hari', 'asc')
+                ->get();
+
+            // Inisialisasi array untuk semua hari dalam bulan
+            $labels = [];
+            $dataTransaksi = [];
+            $dataPendapatan = [];
+
+            for ($i = 1; $i <= $jumlahHari; $i++) {
+                $labels[] = $i;
+
+                $found = $transaksi->firstWhere('hari', $i);
+                $dataTransaksi[] = $found ? (int)$found->total_transaksi : 0;
+                $dataPendapatan[] = $found ? (float)$found->total_pendapatan : 0;
+            }
+
+            $namaBulan = [
+                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+                5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+                9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            ];
+
+            // Hitung total dan rata-rata
+            $totalTransaksi = array_sum($dataTransaksi);
+            $totalPendapatan = array_sum($dataPendapatan);
+            $rataRataPerHari = $totalTransaksi > 0 ? $totalPendapatan / count(array_filter($dataTransaksi)) : 0;
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Statistik penjualan bulanan berhasil diambil.',
+                'periode' => [
+                    'type' => 'monthly',
+                    'bulan' => $bulan,
+                    'tahun' => $tahun,
+                    'nama_bulan' => $namaBulan[$bulan],
+                ],
+                'chart_data' => [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Jumlah Transaksi',
+                            'data' => $dataTransaksi,
+                            'backgroundColor' => 'rgba(255, 99, 132, 0.5)',
+                            'borderColor' => 'rgba(255, 99, 132, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4
+                        ],
+                        [
+                            'label' => 'Total Pendapatan (Rp)',
+                            'data' => $dataPendapatan,
+                            'backgroundColor' => 'rgba(153, 102, 255, 0.5)',
+                            'borderColor' => 'rgba(153, 102, 255, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4,
+                            'yAxisID' => 'y1'
+                        ]
+                    ]
+                ],
+                'summary' => [
+                    'total_transaksi' => $totalTransaksi,
+                    'total_pendapatan' => $totalPendapatan,
+                    'rata_rata_per_hari' => round($rataRataPerHari, 2),
+                    'hari_terbaik' => [
+                        'tanggal' => $labels[array_search(max($dataPendapatan), $dataPendapatan)] ?? null,
+                        'pendapatan' => max($dataPendapatan)
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil statistik penjualan bulanan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Statistik penjualan minggu ini (per hari)
+     * Data untuk Chart.js - Trend penjualan 7 hari terakhir
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistikMingguan(Request $request)
+    {
+        try {
+            // Ambil tanggal mulai (opsional, default: 7 hari terakhir dari hari ini)
+            $tanggalAkhir = $request->input('tanggal_akhir')
+                ? Carbon::parse($request->input('tanggal_akhir'))->endOfDay()
+                : Carbon::now()->endOfDay();
+
+            $tanggalAwal = $tanggalAkhir->copy()->subDays(6)->startOfDay();
+
+            // Ambil data transaksi per hari dalam 7 hari terakhir
+            $transaksi = Transaksi::select(
+                    DB::raw('DATE(tgl_transaksi) as tanggal'),
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->groupBy('tanggal')
+                ->orderBy('tanggal', 'asc')
+                ->get();
+
+            // Inisialisasi array untuk 7 hari
+            $labels = [];
+            $dataTransaksi = [];
+            $dataPendapatan = [];
+            $namaHari = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+
+            $currentDate = $tanggalAwal->copy();
+            for ($i = 0; $i < 7; $i++) {
+                $dateStr = $currentDate->format('Y-m-d');
+                $dayOfWeek = $currentDate->dayOfWeek;
+
+                // Format label: "Sen, 23"
+                $labels[] = $namaHari[$dayOfWeek] . ', ' . $currentDate->day;
+
+                $found = $transaksi->firstWhere('tanggal', $dateStr);
+                $dataTransaksi[] = $found ? (int)$found->total_transaksi : 0;
+                $dataPendapatan[] = $found ? (float)$found->total_pendapatan : 0;
+
+                $currentDate->addDay();
+            }
+
+            // Hitung total dan rata-rata
+            $totalTransaksi = array_sum($dataTransaksi);
+            $totalPendapatan = array_sum($dataPendapatan);
+            $rataRataPerHari = $totalTransaksi > 0 ? $totalPendapatan / count(array_filter($dataTransaksi)) : 0;
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Statistik penjualan mingguan berhasil diambil.',
+                'periode' => [
+                    'type' => 'weekly',
+                    'tanggal_awal' => $tanggalAwal->format('Y-m-d'),
+                    'tanggal_akhir' => $tanggalAkhir->format('Y-m-d'),
+                ],
+                'chart_data' => [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Jumlah Transaksi',
+                            'data' => $dataTransaksi,
+                            'backgroundColor' => 'rgba(255, 206, 86, 0.5)',
+                            'borderColor' => 'rgba(255, 206, 86, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4
+                        ],
+                        [
+                            'label' => 'Total Pendapatan (Rp)',
+                            'data' => $dataPendapatan,
+                            'backgroundColor' => 'rgba(75, 192, 192, 0.5)',
+                            'borderColor' => 'rgba(75, 192, 192, 1)',
+                            'borderWidth' => 2,
+                            'tension' => 0.4,
+                            'yAxisID' => 'y1'
+                        ]
+                    ]
+                ],
+                'summary' => [
+                    'total_transaksi' => $totalTransaksi,
+                    'total_pendapatan' => $totalPendapatan,
+                    'rata_rata_per_hari' => round($rataRataPerHari, 2),
+                    'hari_terbaik' => [
+                        'hari' => $labels[array_search(max($dataPendapatan), $dataPendapatan)] ?? null,
+                        'pendapatan' => max($dataPendapatan)
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil statistik penjualan mingguan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Dashboard statistik gabungan
+     * Mengembalikan ringkasan statistik untuk cards
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function dashboardStatistik()
+    {
+        try {
+            $today = Carbon::today();
+            $thisWeekStart = Carbon::now()->startOfWeek();
+            $thisWeekEnd = Carbon::now()->endOfWeek();
+            $thisMonthStart = Carbon::now()->startOfMonth();
+            $thisMonthEnd = Carbon::now()->endOfMonth();
+            $thisYearStart = Carbon::now()->startOfYear();
+            $thisYearEnd = Carbon::now()->endOfYear();
+
+            // Statistik Hari Ini
+            $todayStats = Transaksi::whereDate('tgl_transaksi', $today)
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Minggu Ini
+            $weekStats = Transaksi::whereBetween('tgl_transaksi', [$thisWeekStart, $thisWeekEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Bulan Ini
+            $monthStats = Transaksi::whereBetween('tgl_transaksi', [$thisMonthStart, $thisMonthEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Tahun Ini
+            $yearStats = Transaksi::whereBetween('tgl_transaksi', [$thisYearStart, $thisYearEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Total Produk dan Kategori
+            $totalProduk = DB::table('tb_produk')->count();
+            $totalKategori = DB::table('tb_kategori_produk')->count();
+
+            // Produk stok menipis (< 10)
+            $produkStokMenipis = DB::table('tb_produk')
+                ->where('stok', '<', 10)
+                ->count();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Dashboard statistik berhasil diambil.',
+                'data' => [
+                    'cards' => [
+                        'hari_ini' => [
+                            'total_transaksi' => (int)($todayStats->total_transaksi ?? 0),
+                            'total_pendapatan' => (float)($todayStats->total_pendapatan ?? 0),
+                        ],
+                        'minggu_ini' => [
+                            'total_transaksi' => (int)($weekStats->total_transaksi ?? 0),
+                            'total_pendapatan' => (float)($weekStats->total_pendapatan ?? 0),
+                        ],
+                        'bulan_ini' => [
+                            'total_transaksi' => (int)($monthStats->total_transaksi ?? 0),
+                            'total_pendapatan' => (float)($monthStats->total_pendapatan ?? 0),
+                        ],
+                        'tahun_ini' => [
+                            'total_transaksi' => (int)($yearStats->total_transaksi ?? 0),
+                            'total_pendapatan' => (float)($yearStats->total_pendapatan ?? 0),
+                        ],
+                    ],
+                    'inventory' => [
+                        'total_produk' => $totalProduk,
+                        'total_kategori' => $totalKategori,
+                        'produk_stok_menipis' => $produkStokMenipis,
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil dashboard statistik.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Statistik untuk comparison chart (Bar Chart)
+     * Membandingkan hari ini, minggu ini, bulan ini, tahun ini
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistikComparison()
+    {
+        try {
+            $today = Carbon::today();
+            $thisWeekStart = Carbon::now()->startOfWeek();
+            $thisWeekEnd = Carbon::now()->endOfWeek();
+            $thisMonthStart = Carbon::now()->startOfMonth();
+            $thisMonthEnd = Carbon::now()->endOfMonth();
+            $thisYearStart = Carbon::now()->startOfYear();
+            $thisYearEnd = Carbon::now()->endOfYear();
+
+            // Statistik Hari Ini
+            $todayStats = Transaksi::whereDate('tgl_transaksi', $today)
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Minggu Ini
+            $weekStats = Transaksi::whereBetween('tgl_transaksi', [$thisWeekStart, $thisWeekEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Bulan Ini
+            $monthStats = Transaksi::whereBetween('tgl_transaksi', [$thisMonthStart, $thisMonthEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            // Statistik Tahun Ini
+            $yearStats = Transaksi::whereBetween('tgl_transaksi', [$thisYearStart, $thisYearEnd])
+                ->select(
+                    DB::raw('COUNT(*) as total_transaksi'),
+                    DB::raw('SUM(harga_total) as total_pendapatan')
+                )
+                ->first();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Statistik comparison berhasil diambil.',
+                'chart_data' => [
+                    'labels' => ['Hari Ini', 'Minggu Ini', 'Bulan Ini', 'Tahun Ini'],
+                    'datasets' => [
+                        [
+                            'label' => 'Jumlah Transaksi',
+                            'data' => [
+                                (int)($todayStats->total_transaksi ?? 0),
+                                (int)($weekStats->total_transaksi ?? 0),
+                                (int)($monthStats->total_transaksi ?? 0),
+                                (int)($yearStats->total_transaksi ?? 0),
+                            ],
+                            'backgroundColor' => [
+                                'rgba(255, 99, 132, 0.5)',
+                                'rgba(54, 162, 235, 0.5)',
+                                'rgba(255, 206, 86, 0.5)',
+                                'rgba(75, 192, 192, 0.5)',
+                            ],
+                            'borderColor' => [
+                                'rgba(255, 99, 132, 1)',
+                                'rgba(54, 162, 235, 1)',
+                                'rgba(255, 206, 86, 1)',
+                                'rgba(75, 192, 192, 1)',
+                            ],
+                            'borderWidth' => 2
+                        ],
+                        [
+                            'label' => 'Total Pendapatan (Rp)',
+                            'data' => [
+                                (float)($todayStats->total_pendapatan ?? 0),
+                                (float)($weekStats->total_pendapatan ?? 0),
+                                (float)($monthStats->total_pendapatan ?? 0),
+                                (float)($yearStats->total_pendapatan ?? 0),
+                            ],
+                            'backgroundColor' => [
+                                'rgba(153, 102, 255, 0.5)',
+                                'rgba(255, 159, 64, 0.5)',
+                                'rgba(199, 199, 199, 0.5)',
+                                'rgba(83, 102, 255, 0.5)',
+                            ],
+                            'borderColor' => [
+                                'rgba(153, 102, 255, 1)',
+                                'rgba(255, 159, 64, 1)',
+                                'rgba(199, 199, 199, 1)',
+                                'rgba(83, 102, 255, 1)',
+                            ],
+                            'borderWidth' => 2,
+                            'yAxisID' => 'y1'
+                        ]
+                    ]
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil statistik comparison.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -37,3 +37,12 @@ Route::prefix('laporan')->group(function () {
     Route::post('produk-terlaris', [\App\Http\Controllers\LaporanController::class, 'produkTerlaris']);
     Route::post('produk-terlaris/pdf', [\App\Http\Controllers\LaporanController::class, 'exportProdukTerlarisPdf']);
 })->middleware('auth:sanctum');
+
+// Statistik untuk Chart.js
+Route::prefix('statistik')->group(function () {
+    Route::get('dashboard', [\App\Http\Controllers\LaporanController::class, 'dashboardStatistik']);
+    Route::get('comparison', [\App\Http\Controllers\LaporanController::class, 'statistikComparison']);
+    Route::get('tahunan', [\App\Http\Controllers\LaporanController::class, 'statistikTahunan']);
+    Route::get('bulanan', [\App\Http\Controllers\LaporanController::class, 'statistikBulanan']);
+    Route::get('mingguan', [\App\Http\Controllers\LaporanController::class, 'statistikMingguan']);
+})->middleware('auth:sanctum');
