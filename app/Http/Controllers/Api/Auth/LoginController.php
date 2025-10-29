@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Auth;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
 use Dedoc\Scramble\Attributes\BodyParameter;
 
 class LoginController extends Controller
@@ -33,22 +34,29 @@ class LoginController extends Controller
             'password' => 'required|string'
         ]);
 
-        try{
-            if (auth()->attempt($credentials)) {
-                $user = auth()->user();
+        try {
+            if (Auth::attempt($credentials)) {
+                $user = Auth::user();
                 return response()->json([
-                    'status' => 'success',
-                    'message' => 'Login successful',
+                    'status' => true,
+                    'message' => 'Login berhasil',
                     'data' => $user,
                     'token' => $user->createToken('api-token')->plainTextToken
                 ], 200);
             }
+
+            // Jika kredensial salah
+            return response()->json([
+                'status' => false,
+                'message' => 'Username atau password salah',
+            ], 401);
+
         } catch (\Exception $e) {
             return response()->json([
-                'status' => 'error',
-                'message' => 'Login failed',
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat login',
                 'error' => $e->getMessage()
-            ], 401);
+            ], 500);
         }
     }
 }
