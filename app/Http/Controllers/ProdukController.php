@@ -32,6 +32,7 @@ class ProdukController extends Controller
                     'id' => $item->id,
                     'kode_produk' => $item->kode_produk,
                     'nama_produk' => $item->nama_produk,
+                    'harga_modal' => $item->harga_modal,
                     'harga' => $item->harga,
                     'stok' => $item->stok,
                     'satuan' => $item->satuan ? [
@@ -69,6 +70,7 @@ class ProdukController extends Controller
     #[BodyParameter('kategori_id', required: true, type: 'integer', example: 1)]
     #[BodyParameter('kode_produk', required: true, type: 'integer', example: 'PRD001')]
     #[BodyParameter('nama_produk', required: true, type: 'integer', example: 'Produk 1')]
+    #[BodyParameter('harga_modal', required: true, type: 'integer', example: 8000)]
     #[BodyParameter('harga', required: true, type: 'integer',example: 10000)]
     #[BodyParameter('stok', required: true,  type: 'integer', example: 10)]
     public function store(Request $request)
@@ -79,6 +81,7 @@ class ProdukController extends Controller
                 'kategori_id' => 'required|exists:tb_kategori_produk,id',
                 'kode_produk' => 'required|string|unique:tb_produk,kode_produk',
                 'nama_produk' => 'required|string',
+                'harga_modal' => 'required|numeric|min:0',
                 'harga' => 'required|numeric|min:0',
                 'stok' => 'required|integer|min:0',
             ]);
@@ -93,6 +96,7 @@ class ProdukController extends Controller
                     'id' => $produk->id,
                     'kode_produk' => $produk->kode_produk,
                     'nama_produk' => $produk->nama_produk,
+                    'harga_modal' => $produk->harga_modal,
                     'harga' => $produk->harga,
                     'stok' => $produk->stok,
                     'satuan' => [
@@ -137,6 +141,7 @@ class ProdukController extends Controller
                     'id' => $produk->id,
                     'kode_produk' => $produk->kode_produk,
                     'nama_produk' => $produk->nama_produk,
+                    'harga_modal' => $produk->harga_modal,
                     'harga' => $produk->harga,
                     'stok' => $produk->stok,
                     'satuan' => [
@@ -173,6 +178,7 @@ class ProdukController extends Controller
     #[BodyParameter('kategori_id', required: true, type: 'integer', example: 1)]
     #[BodyParameter('kode_produk', required: true, type: 'integer', example: 'PRD001')]
     #[BodyParameter('nama_produk', required: true, type: 'integer', example: 'Produk 1 Update')]
+    #[BodyParameter('harga_modal', required: true, type: 'integer', example: 9000)]
     #[BodyParameter('harga', required: true, type: 'integer',example: 10000)]
     #[BodyParameter('stok', required: true,  type: 'integer', example: 100)]
     public function update(Request $request, $id)
@@ -185,6 +191,7 @@ class ProdukController extends Controller
                 'kategori_id' => 'required|exists:tb_kategori_produk,id',
                 'kode_produk' => 'required|string|unique:tb_produk,kode_produk,' . $id,
                 'nama_produk' => 'required|string',
+                'harga_modal' => 'required|numeric|min:0',
                 'harga' => 'required|numeric|min:0',
                 'stok' => 'required|integer|min:0',
             ]);
@@ -199,6 +206,7 @@ class ProdukController extends Controller
                     'id' => $produk->id,
                     'kode_produk' => $produk->kode_produk,
                     'nama_produk' => $produk->nama_produk,
+                    'harga_modal' => $produk->harga_modal,
                     'harga' => $produk->harga,
                     'stok' => $produk->stok,
                     'satuan' => [
@@ -383,6 +391,7 @@ class ProdukController extends Controller
                     'id' => $item->id,
                     'kode_produk' => $item->kode_produk,
                     'nama_produk' => $item->nama_produk,
+                    'harga_modal' => $item->harga_modal,
                     'harga' => $item->harga,
                     'stok' => $item->stok,
                     'satuan' => $item->satuan ? [
