@@ -100,10 +100,13 @@ class TransaksiController extends Controller
                 $subtotal = $produk->harga * $item['jumlah'];
                 $hargaTotal += $subtotal;
 
+                $subTotalModal = $item['jumlah'] * $produk->harga_modal;
+
                 $itemsToProcess[] = [
                     'produk' => $produk,
                     'jumlah' => $item['jumlah'],
-                    'subtotal' => $subtotal
+                    'subtotal' => $subtotal,
+                    'subtotal_modal' => $subTotalModal,
                 ];
             }
 
@@ -139,7 +142,8 @@ class TransaksiController extends Controller
                     'transaksi_id' => $transaksi->id,
                     'produk_id' => $item['produk']->id,
                     'jumlah' => $item['jumlah'],
-                    'subtotal' => $item['subtotal']
+                    'subtotal' => $item['subtotal'],
+                    'subtotal_modal' => $item['subtotal_modal'],
                 ]);
 
                 // Update product stock

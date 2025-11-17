@@ -201,9 +201,21 @@
             <tr>
                 <td width="100"><strong>Tanggal Cetak</strong></td>
                 <td>: {{ date("d F Y, H:i") }} WIB</td>
-                <td width="100" class="text-right"><strong>Periode</strong></td>
-                <td class="text-right">: {{ date("d M", strtotime($periode["tanggal_awal"])) }} -
+                <td width="100" class="text-right"><strong>Periode</strong>: </td>
+                <td class="text-right">{{ date("d M", strtotime($periode["tanggal_awal"])) }} -
                     {{ date("d M Y", strtotime($periode["tanggal_akhir"])) }}</td>
+            </tr>
+            <tr>
+                <td width="100" class="text-right" colspan="3"><strong>Total Pendapatan</strong>: </td>
+                <td class="text-right">Rp {{ number_format($ringkasan["total_pendapatan"], 0, ",", ".") }}</td>
+            </tr>
+            <tr>
+                <td width="100" class="text-right" colspan="3"><strong>Total Modal</strong>: </td>
+                <td class="text-right">Rp {{ number_format($ringkasan["total_modal"], 0, ",", ".") }}</td>
+            </tr>
+            <tr>
+                <td width="100" class="text-right" colspan="3"><strong>Total Keuntungan</strong>: </td>
+                <td class="text-right">Rp {{ number_format($ringkasan["total_keuntungan"], 0, ",", ".") }}</td>
             </tr>
         </table>
     </div>

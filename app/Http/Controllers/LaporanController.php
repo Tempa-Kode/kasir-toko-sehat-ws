@@ -351,6 +351,10 @@ class LaporanController extends Controller
             // Hitung ringkasan
             $totalTransaksi = $transaksi->count();
             $totalPendapatan = $transaksi->sum('harga_total');
+            $totalModal = $transaksi->sum(function ($t) {
+                return $t->detailTransaksis->sum('subtotal_modal');
+            });
+            $totalKeuntungan = $totalPendapatan - $totalModal;
             $totalItemTerjual = $transaksi->sum(function ($t) {
                 return $t->detailTransaksis->sum('jumlah');
             });
@@ -407,6 +411,8 @@ class LaporanController extends Controller
                 'ringkasan' => [
                     'total_transaksi' => $totalTransaksi,
                     'total_pendapatan' => $totalPendapatan,
+                    'total_modal' => $totalModal,
+                    'total_keuntungan' => $totalKeuntungan,
                     'total_item_terjual' => $totalItemTerjual,
                 ],
                 'data_per_tanggal' => $transaksiPerTanggal
