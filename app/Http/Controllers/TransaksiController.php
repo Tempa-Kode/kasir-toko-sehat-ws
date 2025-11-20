@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\DetailTransaksi;
 use Illuminate\Support\Facades\DB;
 use Dedoc\Scramble\Attributes\BodyParameter;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class TransaksiController extends Controller
@@ -210,9 +211,9 @@ class TransaksiController extends Controller
     public function show(string $id)
     {
         try {
-            $transaksi = Transaksi::with(['kasir:id,nama', 'detailTransaksis.produk:id,kode_produk,nama_produk,harga'])
+            $transaksi = Transaksi::with(['kasir:id,nama', 'detailTransaksis.produk:id,kode_produk,nama_produk,harga,satuan_id', 'detailTransaksis.produk.satuan'])
                 ->findOrFail($id);
-
+            Log::info('Data Transaksi', ['transaksi' => $transaksi->toArray()]);
             return response()->json([
                 'status' => true,
                 'message' => 'Detail transaksi berhasil diambil.',
@@ -233,6 +234,7 @@ class TransaksiController extends Controller
                                 'kode_produk' => $detail->produk->kode_produk,
                                 'nama_produk' => $detail->produk->nama_produk,
                                 'harga' => $detail->produk->harga,
+                                'satuan' => $detail->produk->satuan->kode_satuan,
                             ],
                             'jumlah' => $detail->jumlah,
                             'subtotal' => $detail->subtotal
