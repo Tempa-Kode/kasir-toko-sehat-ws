@@ -460,4 +460,41 @@ class ProdukController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get stok history all products
+     */
+    public function allStockHistory()
+    {
+        try {
+            $data = RiwayatProdukMasuk::with('produk', 'produk.satuan')->latest()->get();
+            $history = $data->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'produk_id' => $item->produk->id,
+                    'kode_produk' => $item->produk->kode_produk,
+                    'nama_produk' => $item->produk->nama_produk,
+                    'satuan' => $item->produk->satuan ? [
+                        'id' => $item->produk->satuan->id,
+                        'kode_satuan' => $item->produk->satuan->kode_satuan,
+                        'nama_satuan' => $item->produk->satuan->nama_satuan,
+                    ] : null,
+                    'stok' => $item->stok,
+                    'distributor' => $item->distributor,
+                    'tanggal_masuk' => Carbon::parse($item->tanggal_masuk)->diffForHumans(),
+                ];
+            });
+            return response()->json([
+                'status' => true,
+                'message' => 'Riwayat stok semua produk berhasil diambil.',
+                'data' => $history,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil riwayat stok semua produk.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

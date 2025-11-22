@@ -18,6 +18,7 @@ Route::resource('kategori-produk', \App\Http\Controllers\Api\KategoriProdukContr
 Route::prefix('produk')->group( function () {
     Route::patch('{id}/stock', [\App\Http\Controllers\ProdukController::class, 'updateStock']);
     Route::get('search', [\App\Http\Controllers\ProdukController::class, 'search']);
+    Route::get('history', [\App\Http\Controllers\ProdukController::class, 'allStockHistory']);
     Route::get('history/{productId}', [\App\Http\Controllers\ProdukController::class, 'stockHistory']);
 })->middleware('auth:sanctum');
 Route::resource('produk', \App\Http\Controllers\ProdukController::class)->middleware('auth:sanctum');
