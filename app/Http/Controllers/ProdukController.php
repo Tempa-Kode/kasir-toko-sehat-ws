@@ -89,6 +89,13 @@ class ProdukController extends Controller
             ]);
 
             $produk = Produk::create($validated);
+
+            RiwayatProdukMasuk::create([
+                'produk_id' => $produk->id,
+                'stok' => $produk->stok,
+                'tanggal_masuk' => now(),
+            ]);
+
             $produk->load('satuan', 'kategori');
 
             return response()->json([
@@ -434,14 +441,17 @@ class ProdukController extends Controller
     {
         try {
             $produk = Produk::with('riwayatProdukMasuk')->findOrFail($productId);
-            $history = $produk->riwayatProdukMasuk->map(function ($item) {
-                return [
-                    'id' => $item->id,
-                    'stok' => $item->stok,
-                    'distributor' => $item->distributor,
-                    'tanggal_masuk' => $item->tanggal_masuk,
-                ];
-            });
+            $history = $produk->riwayatProdukMasuk()
+                        ->latest()
+                        ->get()
+                        ->map(function ($item) {
+                            return [
+                                'id' => $item->id,
+                                'stok' => $item->stok,
+                                'distributor' => $item->distributor,
+                                'tanggal_masuk' => $item->tanggal_masuk,
+                            ];
+                        });
             return response()->json([
                 'status' => true,
                 'message' => 'Riwayat stok produk berhasil diambil.',
