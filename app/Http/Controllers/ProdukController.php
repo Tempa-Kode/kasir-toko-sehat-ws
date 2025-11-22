@@ -8,6 +8,7 @@ use App\Models\RiwayatProdukMasuk;
 use Dedoc\Scramble\Attributes\BodyParameter;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class ProdukController extends Controller
 {
@@ -420,6 +421,41 @@ class ProdukController extends Controller
             return response()->json([
                 'status' => false,
                 'message' => 'Gagal melakukan pencarian.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get stock history for a specific product
+     */
+    #[PathParameter('productId', description: 'ID of the produk', required: true, example: 1)]
+    public function stockHistory($productId)
+    {
+        try {
+            $produk = Produk::with('riwayatProdukMasuk')->findOrFail($productId);
+            $history = $produk->riwayatProdukMasuk->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'stok' => $item->stok,
+                    'distributor' => $item->distributor,
+                    'tanggal_masuk' => Carbon::parse($item->tanggal_masuk)->diffForHumans(),
+                ];
+            });
+            return response()->json([
+                'status' => true,
+                'message' => 'Riwayat stok produk berhasil diambil.',
+                'data' => [
+                    'produk_id' => $produk->id,
+                    'kode_produk' => $produk->kode_produk,
+                    'nama_produk' => $produk->nama_produk,
+                    'history' => $history,
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil riwayat stok produk.',
                 'error' => $e->getMessage()
             ], 500);
         }
