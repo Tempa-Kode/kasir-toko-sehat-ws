@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Produk;
 use Illuminate\Http\Request;
+use App\Models\RiwayatProdukMasuk;
 use Dedoc\Scramble\Attributes\BodyParameter;
 use Dedoc\Scramble\Attributes\PathParameter;
 use Illuminate\Validation\ValidationException;
@@ -275,7 +276,7 @@ class ProdukController extends Controller
      */
     #[PathParameter('id', description: 'ID of the produk', required: true, example: 1)]
     #[BodyParameter('quantity', required: true, type: 'integer', example: 50, description: 'Jumlah stok yang akan ditambahkan')]
-    #[BodyParameter('operation', required: false, type: 'string', example: 'add', description: 'Operation type: add (default) or subtract')]
+    #[BodyParameter('distributor', required: false, type: 'string', example: 'PT. Mencari Cinta Sejati', description: 'Nama distributor (opsional)')]
     public function updateStock(Request $request, $id)
     {
         try {
@@ -283,44 +284,39 @@ class ProdukController extends Controller
 
             $validated = $request->validate([
                 'quantity' => 'required|integer|min:1',
-                'operation' => 'nullable|string|in:add,subtract'
+                'distributor' => 'nullable|string|max:50',
             ]);
 
             $quantity = $validated['quantity'];
-            $operation = $validated['operation'] ?? 'add';
+            $distributor = $validated['distributor'] ?? null;
 
-            // Calculate new stock
-            if ($operation === 'add') {
-                $newStock = $produk->stok + $quantity;
-            } else {
-                $newStock = $produk->stok - $quantity;
-
-                // Prevent negative stock
-                if ($newStock < 0) {
-                    return response()->json([
-                        'status' => false,
-                        'message' => 'Stok tidak mencukupi. Stok saat ini: ' . $produk->stok
-                    ], 400);
-                }
-            }
+            $newStock = $produk->stok + $quantity;
 
             // Update stock
             $produk->update(['stok' => $newStock]);
-            $produk->load('satuan', 'kategori');
+
+            // Record stock history
+            RiwayatProdukMasuk::create([
+                'produk_id' => $produk->id,
+                'stok' => $quantity,
+                'distributor' => $distributor,
+                'tanggal_masuk' => now(),
+            ]);
+
+            $produk->load('satuan', 'kategori', 'riwayatProdukMasuk');
 
             return response()->json([
                 'status' => true,
-                'message' => $operation === 'add'
-                    ? "Stok berhasil ditambahkan sebanyak {$quantity}. Stok sekarang: {$newStock}"
-                    : "Stok berhasil dikurangi sebanyak {$quantity}. Stok sekarang: {$newStock}",
+                'message' => "Stok berhasil diperbarui sebanyak {$quantity}. Stok sekarang: {$newStock}",
                 'data' => [
                     'id' => $produk->id,
                     'kode_produk' => $produk->kode_produk,
                     'nama_produk' => $produk->nama_produk,
                     'harga' => $produk->harga,
-                    'stok_sebelumnya' => $produk->stok - ($operation === 'add' ? $quantity : -$quantity),
+                    'stok_sebelumnya' => $produk->stok - $quantity,
                     'stok_sekarang' => $produk->stok,
-                    'perubahan' => $operation === 'add' ? "+{$quantity}" : "-{$quantity}",
+                    'distributor' => $distributor ?? 'N/A',
+                    'perubahan' => "+{$quantity}",
                     'satuan' => [
                         'id' => $produk->satuan->id,
                         'kode_satuan' => $produk->satuan->kode_satuan,
