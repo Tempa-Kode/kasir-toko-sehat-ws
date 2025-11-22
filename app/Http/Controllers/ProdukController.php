@@ -439,7 +439,7 @@ class ProdukController extends Controller
                     'id' => $item->id,
                     'stok' => $item->stok,
                     'distributor' => $item->distributor,
-                    'tanggal_masuk' => Carbon::parse($item->tanggal_masuk)->diffForHumans(),
+                    'tanggal_masuk' => $item->tanggal_masuk,
                 ];
             });
             return response()->json([
@@ -481,7 +481,7 @@ class ProdukController extends Controller
                     ] : null,
                     'stok' => $item->stok,
                     'distributor' => $item->distributor,
-                    'tanggal_masuk' => Carbon::parse($item->tanggal_masuk)->diffForHumans(),
+                    'tanggal_masuk' => $item->tanggal_masuk,
                 ];
             });
             return response()->json([
