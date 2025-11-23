@@ -47,4 +47,5 @@ Route::prefix('statistik')->group(function () {
     Route::get('tahunan', [\App\Http\Controllers\LaporanController::class, 'statistikTahunan']);
     Route::get('bulanan', [\App\Http\Controllers\LaporanController::class, 'statistikBulanan']);
     Route::get('mingguan', [\App\Http\Controllers\LaporanController::class, 'statistikMingguan']);
+    Route::get('trend-penjualan', [\App\Http\Controllers\LaporanController::class, 'statistikTrendPenjualan']);
 })->middleware('auth:sanctum');

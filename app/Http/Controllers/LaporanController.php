@@ -1110,4 +1110,118 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Statistik trend penjualan untuk line chart
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function statistikTrendPenjualan(Request $request)
+    {
+        try {
+            // Ambil parameter 'days', default 30 hari.
+            $days = $request->input('days', 30);
+
+            // Validasi sederhana untuk parameter days
+            if (!is_numeric($days) || $days < 2 || $days > 365) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Parameter "days" harus berupa angka antara 2 dan 365.'
+                ], 422);
+            }
+
+            $tanggalAkhir = Carbon::now()->endOfDay();
+            $tanggalAwal = Carbon::now()->subDays($days - 1)->startOfDay();
+
+            // Ambil data transaksi per hari dalam rentang waktu yang ditentukan
+            $transaksi = Transaksi::select(
+                DB::raw('DATE(tgl_transaksi) as tanggal'),
+                DB::raw('COUNT(*) as total_transaksi'),
+                DB::raw('SUM(harga_total) as total_pendapatan')
+            )
+                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->groupBy('tanggal')
+                ->orderBy('tanggal', 'asc')
+                ->get()
+                // Ubah ke collection dengan key tanggal untuk lookup lebih cepat
+                ->keyBy('tanggal');
+
+            // Inisialisasi array untuk data chart
+            $labels = [];
+            $dataTransaksi = [];
+            $dataPendapatan = [];
+
+            // Iterasi untuk setiap hari dalam rentang tanggal
+            $currentDate = $tanggalAwal->copy();
+            for ($i = 0; $i < $days; $i++) {
+                $dateStr = $currentDate->format('Y-m-d');
+                // Format label: "23 Nov"
+                $labels[] = $currentDate->format('d M');
+
+                // Cek apakah ada data transaksi pada tanggal ini
+                if (isset($transaksi[$dateStr])) {
+                    $dataTransaksi[] = (int)$transaksi[$dateStr]->total_transaksi;
+                    $dataPendapatan[] = (float)$transaksi[$dateStr]->total_pendapatan;
+                } else {
+                    $dataTransaksi[] = 0;
+                    $dataPendapatan[] = 0;
+                }
+
+                $currentDate->addDay();
+            }
+
+            // Hitung ringkasan total
+            $totalTransaksi = array_sum($dataTransaksi);
+            $totalPendapatan = array_sum($dataPendapatan);
+            // Hitung rata-rata hanya pada hari yang ada transaksi
+            $daysWithTransactions = count(array_filter($dataTransaksi));
+            $rataRataPerHari = $daysWithTransactions > 0 ? $totalPendapatan / $daysWithTransactions : 0;
+
+            return response()->json([
+                'status' => true,
+                'message' => "Statistik trend penjualan {$days} hari terakhir berhasil diambil.",
+                'periode' => [
+                    'type' => 'daily_trend',
+                    'days' => (int)$days,
+                    'tanggal_awal' => $tanggalAwal->format('Y-m-d'),
+                    'tanggal_akhir' => $tanggalAkhir->format('Y-m-d'),
+                ],
+                'chart_data' => [
+                    'labels' => $labels,
+                    'datasets' => [
+                        [
+                            'label' => 'Jumlah Transaksi',
+                            'data' => $dataTransaksi,
+                            'borderColor' => 'rgba(54, 162, 235, 1)',
+                            'backgroundColor' => 'rgba(54, 162, 235, 0.2)',
+                            'tension' => 0.4,
+                            'fill' => true,
+                        ],
+                        [
+                            'label' => 'Total Pendapatan (Rp)',
+                            'data' => $dataPendapatan,
+                            'borderColor' => 'rgba(75, 192, 192, 1)',
+                            'backgroundColor' => 'rgba(75, 192, 192, 0.2)',
+                            'tension' => 0.4,
+                            'fill' => true,
+                            'yAxisID' => 'y1'
+                        ]
+                    ]
+                ],
+                'summary' => [
+                    'total_transaksi' => $totalTransaksi,
+                    'total_pendapatan' => $totalPendapatan,
+                    'rata_rata_pendapatan_per_hari' => round($rataRataPerHari, 2),
+                ]
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil statistik trend penjualan.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
