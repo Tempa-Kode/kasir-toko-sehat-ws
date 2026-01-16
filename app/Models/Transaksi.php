@@ -27,4 +27,9 @@ class Transaksi extends Model
     {
         return $this->hasMany(DetailTransaksi::class, 'transaksi_id');
     }
+
+    public function scopeFilterByDate($query, $date)
+    {
+        return $query->where('tgl_transaksi', 'like', $date . '%');
+    }
 }

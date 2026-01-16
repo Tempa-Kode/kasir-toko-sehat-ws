@@ -16,12 +16,18 @@ class TransaksiController extends Controller
     /**
      * Get all transactions
      */
-    public function index()
+    public function index(Request $request)
     {
+        $date = $request->query('date', null);
+        $noNota = $request->query('noNota', null);
+        $perPage = $request->query('per_page', 100);
+
         try {
             $data = Transaksi::with(['kasir:id,nama', 'detailTransaksis.produk:id,kode_produk,nama_produk'])
+                ->when($date, fn($q) => $q->filterByDate($date))
+                ->when($noNota, fn($q) => $q->where('no_nota', 'like', '%' . $noNota . '%'))
                 ->orderBy('created_at', 'desc')
-                ->get();
+                ->paginate($perPage);
 
             if ($data->isEmpty()) {
                 return response()->json([
@@ -50,7 +56,15 @@ class TransaksiController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Data transaksi berhasil diambil.',
-                'data' => $transaksi
+                'data' => $transaksi,
+                'pagination' => [
+                    'current_page' => $data->currentPage(),
+                    'last_page' => $data->lastPage(),
+                    'per_page' => $data->perPage(),
+                    'total' => $data->total(),
+                    'next_page_url' => $data->nextPageUrl(),
+                    'prev_page_url' => $data->previousPageUrl(),
+                ]
             ], 200);
 
         } catch (\Exception $e) {
