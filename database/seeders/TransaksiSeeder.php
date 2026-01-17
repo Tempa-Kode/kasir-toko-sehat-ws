@@ -35,7 +35,7 @@ class TransaksiSeeder extends Seeder
 
         // Tanggal mulai dan akhir
         $startDate = Carbon::create(2025, 1, 1);
-        $endDate = Carbon::create(2025, 12, 31);
+        $endDate = Carbon::create(2026, 1, 17);
 
         // Target omset harian rata-rata
         $targetOmsetHarian = 35000000;
@@ -43,7 +43,7 @@ class TransaksiSeeder extends Seeder
         // Counter untuk nomor nota
         $notaCounter = 1;
 
-        $this->command->info('Mulai generate data transaksi...');
+        $this->command->info('Mulai generate data transaksi...');   
         $progressBar = $this->command->getOutput()->createProgressBar($startDate->diffInDays($endDate) + 1);
 
         // Loop untuk setiap hari

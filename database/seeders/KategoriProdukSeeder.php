@@ -23,7 +23,7 @@ class KategoriProdukSeeder extends Seeder
             ['nama_kategori' => 'Perawatan Diri & Kosmetik', 'created_at' => now(), 'updated_at' => now()],
             ['nama_kategori' => 'Bahan Segar', 'created_at' => now(), 'updated_at' => now()],
             ['nama_kategori' => 'Alat Tulis Kantor (ATK)', 'created_at' => now(), 'updated_at' => now()],
-            ['nama_kategori' => 'Lain-lain', 'created_at' => now(), 'updated_at' => now()],
+            ['nama_kategori' => 'Kosmetik', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

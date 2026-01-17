@@ -13,8 +13,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(SatuanSeeder::class);
-
         // Admin
         User::create([
             'nama' => 'admin',
@@ -45,6 +43,9 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
+        $this->call(SatuanSeeder::class);
         $this->call(KategoriProdukSeeder::class);
+        $this->call(ProdukSeeder::class);
+        $this->call(TransaksiSeeder::class);
     }
 }

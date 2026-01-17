@@ -55,6 +55,9 @@ class SatuanSeeder extends Seeder
             ['kode_satuan' => 'SET', 'nama_satuan' => 'Set', 'created_at' => now(), 'updated_at' => now()],
             ['kode_satuan' => 'PAIR', 'nama_satuan' => 'Pair (Pasang)', 'created_at' => now(), 'updated_at' => now()],
             ['kode_satuan' => 'STRIP', 'nama_satuan' => 'Strip', 'created_at' => now(), 'updated_at' => now()],
+
+            ['kode_satuan' => 'LS', 'nama_satuan' => 'Lusin', 'created_at' => now(), 'updated_at' => now()],
+            ['kode_satuan' => 'BAL', 'nama_satuan' => 'Bal', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }
