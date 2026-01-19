@@ -315,7 +315,7 @@ class LaporanController extends Controller
     }
 
     /**
-     * Export laporan transaksi bulanan ke PDF
+     * Export laporan transaksi harian ke PDF
      *
      * @param Request $request
      * @return \Illuminate\Http\Response
@@ -324,27 +324,22 @@ class LaporanController extends Controller
     {
         try {
             $validated = $request->validate([
-                'bulan' => 'required|integer|min:1|max:12',
-                'tahun' => 'required|integer|min:2000|max:2100',
+                'tanggal' => 'required|date',
             ]);
 
-            $bulan = $validated['bulan'];
-            $tahun = $validated['tahun'];
+            $tanggal = Carbon::parse($validated['tanggal'])->startOfDay();
+            $tanggalAkhir = Carbon::parse($validated['tanggal'])->endOfDay();
 
-            // Buat tanggal awal dan akhir bulan
-            $tanggalAwal = Carbon::createFromDate($tahun, $bulan, 1)->startOfMonth();
-            $tanggalAkhir = Carbon::createFromDate($tahun, $bulan, 1)->endOfMonth();
-
-            // Ambil data transaksi dalam bulan tersebut
+            // Ambil data transaksi pada tanggal tersebut
             $transaksi = Transaksi::with(['kasir:id,nama', 'detailTransaksis.produk:id,kode_produk,nama_produk,harga'])
-                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->whereBetween('tgl_transaksi', [$tanggal, $tanggalAkhir])
                 ->orderBy('tgl_transaksi', 'desc')
                 ->get();
 
             if ($transaksi->isEmpty()) {
                 return response()->json([
                     'status' => false,
-                    'message' => 'Tidak ada transaksi pada bulan yang dipilih.'
+                    'message' => 'Tidak ada transaksi pada tanggal yang dipilih.'
                 ], 404);
             }
 
@@ -359,55 +354,35 @@ class LaporanController extends Controller
                 return $t->detailTransaksis->sum('jumlah');
             });
 
-            // Grouping transaksi per tanggal
-            $transaksiPerTanggal = $transaksi->groupBy(function ($item) {
-                return Carbon::parse($item->tgl_transaksi)->format('Y-m-d');
-            })->map(function ($group, $tanggal) {
+            // Format data transaksi
+            $dataTransaksi = $transaksi->map(function ($item) {
                 return [
-                    'tanggal' => $tanggal,
-                    'total_transaksi' => $group->count(),
-                    'total_pendapatan' => $group->sum('harga_total'),
-                    'transaksi' => $group->map(function ($item) {
+                    'id' => $item->id,
+                    'no_nota' => $item->no_nota,
+                    'tgl_transaksi' => $item->tgl_transaksi,
+                    'harga_total' => $item->harga_total,
+                    'kasir' => [
+                        'id' => $item->kasir->id,
+                        'nama' => $item->kasir->nama,
+                    ],
+                    'detail_items' => $item->detailTransaksis->map(function ($detail) {
                         return [
-                            'id' => $item->id,
-                            'no_nota' => $item->no_nota,
-                            'tgl_transaksi' => $item->tgl_transaksi,
-                            'harga_total' => $item->harga_total,
-                            'kasir' => [
-                                'id' => $item->kasir->id,
-                                'nama' => $item->kasir->nama,
-                            ],
-                            'detail_items' => $item->detailTransaksis->map(function ($detail) {
-                                return [
-                                    'produk_id' => $detail->produk->id,
-                                    'kode_produk' => $detail->produk->kode_produk,
-                                    'nama_produk' => $detail->produk->nama_produk,
-                                    'harga_satuan' => $detail->produk->harga,
-                                    'jumlah' => $detail->jumlah,
-                                    'subtotal' => $detail->subtotal,
-                                ];
-                            }),
-                            'total_item' => $item->detailTransaksis->count(),
+                            'produk_id' => $detail->produk->id,
+                            'kode_produk' => $detail->produk->kode_produk,
+                            'nama_produk' => $detail->produk->nama_produk,
+                            'harga_satuan' => $detail->produk->harga,
+                            'jumlah' => $detail->jumlah,
+                            'subtotal' => $detail->subtotal,
+                            'subtotal_modal' => $detail->subtotal_modal,
                         ];
-                    })->values()
+                    }),
+                    'total_item' => $item->detailTransaksis->count(),
                 ];
-            })->values();
-
-            // Nama bulan dalam bahasa Indonesia
-            $namaBulan = [
-                1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-                5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-                9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
-            ];
+            });
 
             $data = [
-                'periode' => [
-                    'bulan' => $bulan,
-                    'tahun' => $tahun,
-                    'nama_bulan' => $namaBulan[$bulan],
-                    'tanggal_awal' => $tanggalAwal->format('Y-m-d'),
-                    'tanggal_akhir' => $tanggalAkhir->format('Y-m-d'),
-                ],
+                'tanggal' => $tanggal->format('Y-m-d'),
+                'tanggal_format' => $tanggal->locale('id')->isoFormat('D MMMM YYYY'),
                 'ringkasan' => [
                     'total_transaksi' => $totalTransaksi,
                     'total_pendapatan' => $totalPendapatan,
@@ -415,13 +390,13 @@ class LaporanController extends Controller
                     'total_keuntungan' => $totalKeuntungan,
                     'total_item_terjual' => $totalItemTerjual,
                 ],
-                'data_per_tanggal' => $transaksiPerTanggal
+                'data' => $dataTransaksi
             ];
 
-            $pdf = Pdf::loadView('laporan.bulanan-pdf', $data);
+            $pdf = Pdf::loadView('laporan.harian-pdf', $data);
             $pdf->setPaper('a4', 'portrait');
 
-            $filename = 'Laporan_Transaksi_Bulanan_' . $namaBulan[$bulan] . '_' . $tahun . '.pdf';
+            $filename = 'Laporan_Transaksi_Harian_' . $tanggal->format('Ymd') . '.pdf';
 
             return $pdf->download($filename);
 
@@ -434,7 +409,7 @@ class LaporanController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => false,
-                'message' => 'Gagal export PDF laporan transaksi bulanan.',
+                'message' => 'Gagal export PDF laporan transaksi harian.',
                 'error' => $e->getMessage()
             ], 500);
         }
