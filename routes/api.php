@@ -38,6 +38,8 @@ Route::prefix('laporan')->group(function () {
     Route::post('bulanan/pdf', [\App\Http\Controllers\LaporanController::class, 'exportBulananPdf']);
     Route::post('produk-terlaris', [\App\Http\Controllers\LaporanController::class, 'produkTerlaris']);
     Route::post('produk-terlaris/pdf', [\App\Http\Controllers\LaporanController::class, 'exportProdukTerlarisPdf']);
+    Route::post('laba-rugi', [\App\Http\Controllers\LaporanController::class, 'laporanLabaRugi']);
+    Route::post('laba-rugi/pdf', [\App\Http\Controllers\LaporanController::class, 'exportLabaRugiPdf']);
 })->middleware('auth:sanctum');
 
 // Statistik untuk Chart.js

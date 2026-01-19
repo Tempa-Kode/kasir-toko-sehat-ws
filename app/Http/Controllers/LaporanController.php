@@ -1199,4 +1199,189 @@ class LaporanController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Laporan Laba Rugi
+     * Menampilkan pendapatan, HPP, dan laba bersih
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function laporanLabaRugi(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'tanggal_awal' => 'required|date',
+                'tanggal_akhir' => 'required|date|after_or_equal:tanggal_awal',
+            ]);
+
+            $tanggalAwal = Carbon::parse($validated['tanggal_awal'])->startOfDay();
+            $tanggalAkhir = Carbon::parse($validated['tanggal_akhir'])->endOfDay();
+
+            // Ambil data transaksi dalam periode
+            $transaksi = Transaksi::with('detailTransaksis')
+                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->get();
+
+            if ($transaksi->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada transaksi pada periode yang dipilih.'
+                ], 404);
+            }
+
+            // Hitung komponen laba rugi
+            $totalPenjualan = $transaksi->sum('harga_total');
+            $totalHPP = $transaksi->sum(function ($t) {
+                return $t->detailTransaksis->sum('subtotal_modal');
+            });
+            $labaKotor = $totalPenjualan - $totalHPP;
+            $labaBersih = $labaKotor; // Tidak ada beban operasional
+
+            // Hitung persentase
+            $persentaseLabaKotor = $totalPenjualan > 0 ? ($labaKotor / $totalPenjualan) * 100 : 0;
+            $persentaseLabaBersih = $totalPenjualan > 0 ? ($labaBersih / $totalPenjualan) * 100 : 0;
+
+            $data = [
+                'periode' => [
+                    'tanggal_awal' => $tanggalAwal->format('Y-m-d'),
+                    'tanggal_akhir' => $tanggalAkhir->format('Y-m-d'),
+                    'tanggal_awal_format' => $tanggalAwal->locale('id')->isoFormat('D MMMM YYYY'),
+                    'tanggal_akhir_format' => $tanggalAkhir->locale('id')->isoFormat('D MMMM YYYY'),
+                ],
+                'pendapatan' => [
+                    'penjualan_barang' => $totalPenjualan,
+                    'retur_penjualan' => 0, // Belum ada di sistem
+                    'potongan_penjualan' => 0, // Belum ada di sistem
+                    'total_pendapatan_bersih' => $totalPenjualan,
+                ],
+                'harga_pokok_penjualan' => [
+                    'total_hpp' => $totalHPP,
+                ],
+                'laba_rugi' => [
+                    'laba_kotor' => $labaKotor,
+                    'persentase_laba_kotor' => round($persentaseLabaKotor, 2),
+                    'total_beban' => 0, // Tidak ada beban
+                    'laba_sebelum_pajak' => $labaBersih,
+                    'pajak' => 0, // Belum ada di sistem
+                    'laba_bersih' => $labaBersih,
+                    'persentase_laba_bersih' => round($persentaseLabaBersih, 2),
+                ],
+                'ringkasan' => [
+                    'total_transaksi' => $transaksi->count(),
+                    'total_penjualan' => $totalPenjualan,
+                    'total_hpp' => $totalHPP,
+                    'laba_kotor' => $labaKotor,
+                    'laba_bersih' => $labaBersih,
+                ]
+            ];
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Laporan laba rugi berhasil diambil.',
+                'data' => $data
+            ], 200);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal mengambil laporan laba rugi.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Export Laporan Laba Rugi ke PDF
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\Response
+     */
+    public function exportLabaRugiPdf(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'tanggal_awal' => 'required|date',
+                'tanggal_akhir' => 'required|date|after_or_equal:tanggal_awal',
+            ]);
+
+            $tanggalAwal = Carbon::parse($validated['tanggal_awal'])->startOfDay();
+            $tanggalAkhir = Carbon::parse($validated['tanggal_akhir'])->endOfDay();
+
+            // Ambil data transaksi dalam periode
+            $transaksi = Transaksi::with('detailTransaksis')
+                ->whereBetween('tgl_transaksi', [$tanggalAwal, $tanggalAkhir])
+                ->get();
+
+            if ($transaksi->isEmpty()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Tidak ada transaksi pada periode yang dipilih.'
+                ], 404);
+            }
+
+            // Hitung komponen laba rugi
+            $totalPenjualan = $transaksi->sum('harga_total');
+            $totalHPP = $transaksi->sum(function ($t) {
+                return $t->detailTransaksis->sum('subtotal_modal');
+            });
+            $labaKotor = $totalPenjualan - $totalHPP;
+            $labaBersih = $labaKotor; // Tidak ada beban operasional
+
+            // Hitung persentase
+            $persentaseLabaKotor = $totalPenjualan > 0 ? ($labaKotor / $totalPenjualan) * 100 : 0;
+            $persentaseLabaBersih = $totalPenjualan > 0 ? ($labaBersih / $totalPenjualan) * 100 : 0;
+
+            $data = [
+                'periode' => [
+                    'tanggal_awal' => $tanggalAwal->format('Y-m-d'),
+                    'tanggal_akhir' => $tanggalAkhir->format('Y-m-d'),
+                    'tanggal_awal_format' => $tanggalAwal->locale('id')->isoFormat('D MMMM YYYY'),
+                    'tanggal_akhir_format' => $tanggalAkhir->locale('id')->isoFormat('D MMMM YYYY'),
+                ],
+                'pendapatan' => [
+                    'penjualan_barang' => $totalPenjualan,
+                    'total_pendapatan_bersih' => $totalPenjualan,
+                ],
+                'hpp' => [
+                    'total_hpp' => $totalHPP,
+                ],
+                'laba_rugi' => [
+                    'laba_kotor' => $labaKotor,
+                    'persentase_laba_kotor' => round($persentaseLabaKotor, 2),
+                    'laba_bersih' => $labaBersih,
+                    'persentase_laba_bersih' => round($persentaseLabaBersih, 2),
+                ],
+                'ringkasan' => [
+                    'total_transaksi' => $transaksi->count(),
+                ]
+            ];
+
+            $pdf = Pdf::loadView('laporan.laba-rugi-pdf', $data);
+            $pdf->setPaper('a4', 'portrait');
+
+            $filename = 'Laporan_Laba_Rugi_' . $tanggalAwal->format('Ymd') . '_' . $tanggalAkhir->format('Ymd') . '.pdf';
+
+            return $pdf->download($filename);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal export PDF laporan laba rugi.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
