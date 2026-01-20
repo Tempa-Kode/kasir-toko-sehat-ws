@@ -206,14 +206,14 @@
         </tr>
         <tr class="laba-kotor-row">
             <td class="text-bold">
-                LABA KOTOR
+                LABA 
                 <span class="percentage">({{ number_format($laba_rugi["persentase_laba_kotor"], 2) }}%)</span>
             </td>
             <td class="text-right text-bold">Rp {{ number_format($laba_rugi["laba_kotor"], 0, ",", ".") }}</td>
         </tr>
 
         <!-- LABA BERSIH -->
-        <tr style="height: 15px;">
+        {{-- <tr style="height: 15px;">
             <td colspan="2"></td>
         </tr>
         <tr class="laba-bersih-row">
@@ -222,7 +222,7 @@
                 <span class="percentage">({{ number_format($laba_rugi["persentase_laba_bersih"], 2) }}%)</span>
             </td>
             <td class="text-right text-bold">Rp {{ number_format($laba_rugi["laba_bersih"], 0, ",", ".") }}</td>
-        </tr>
+        </tr> --}}
     </table>
 
     <div class="summary-box">
