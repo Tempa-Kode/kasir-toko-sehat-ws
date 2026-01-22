@@ -242,6 +242,7 @@
                         <th width="25" class="text-center">No</th>
                         <th width="70">Kode</th>
                         <th>Nama Produk</th>
+                        <th width="70" class="text-right">Modal</th>
                         <th width="70" class="text-right">Harga</th>
                         <th width="35" class="text-center">Qty</th>
                         <th width="85" class="text-right">Subtotal</th>
@@ -256,18 +257,21 @@
                             // Hitung modal per item (asumsi ada subtotal_modal di detail_items atau bisa dihitung)
                             $modalItem = isset($item["subtotal_modal"]) ? $item["subtotal_modal"] : 0;
                             $totalModal += $modalItem;
+                            // Hitung harga modal per unit
+                            $hargaModal = $item["jumlah"] > 0 ? $modalItem / $item["jumlah"] : 0;
                         @endphp
                         <tr>
                             <td class="text-center">{{ $index + 1 }}</td>
                             <td>{{ $item["kode_produk"] }}</td>
                             <td>{{ $item["nama_produk"] }}</td>
+                            <td class="text-right">{{ number_format($hargaModal, 0, ",", ".") }}</td>
                             <td class="text-right">{{ number_format($item["harga_satuan"], 0, ",", ".") }}</td>
                             <td class="text-center">{{ $item["jumlah"] }}</td>
                             <td class="text-right">{{ number_format($item["subtotal"], 0, ",", ".") }}</td>
                         </tr>
                     @endforeach
                     <tr class="total-row">
-                        <td colspan="4" class="text-right">TOTAL TRANSAKSI</td>
+                        <td colspan="5" class="text-right">TOTAL TRANSAKSI</td>
                         <td class="text-center">{{ $transaksi["detail_items"]->sum("jumlah") }}</td>
                         <td class="text-right">Rp {{ number_format($transaksi["harga_total"], 0, ",", ".") }}</td>
                     </tr>
