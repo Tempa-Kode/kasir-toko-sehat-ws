@@ -245,6 +245,7 @@
                         <th width="70" class="text-right">Modal</th>
                         <th width="70" class="text-right">Harga</th>
                         <th width="35" class="text-center">Qty</th>
+                        <th width="35" class="text-center">Keuntungan/brg</th>
                         <th width="85" class="text-right">Subtotal</th>
                     </tr>
                 </thead>
@@ -259,6 +260,8 @@
                             $totalModal += $modalItem;
                             // Hitung harga modal per unit
                             $hargaModal = $item["jumlah"] > 0 ? $modalItem / $item["jumlah"] : 0;
+                            // Hitung keuntungan per barang
+                            $keuntunganPerBarang = ($item["harga_satuan"] - $hargaModal) * $item["jumlah"];
                         @endphp
                         <tr>
                             <td class="text-center">{{ $index + 1 }}</td>
@@ -267,11 +270,12 @@
                             <td class="text-right">{{ number_format($hargaModal, 0, ",", ".") }}</td>
                             <td class="text-right">{{ number_format($item["harga_satuan"], 0, ",", ".") }}</td>
                             <td class="text-center">{{ $item["jumlah"] }}</td>
+                            <td class="text-center">{{ number_format($keuntunganPerBarang, 0, ",", ".") }}</td>
                             <td class="text-right">{{ number_format($item["subtotal"], 0, ",", ".") }}</td>
                         </tr>
                     @endforeach
                     <tr class="total-row">
-                        <td colspan="5" class="text-right">TOTAL TRANSAKSI</td>
+                        <td colspan="6" class="text-right">TOTAL TRANSAKSI</td>
                         <td class="text-center">{{ $transaksi["detail_items"]->sum("jumlah") }}</td>
                         <td class="text-right">Rp {{ number_format($transaksi["harga_total"], 0, ",", ".") }}</td>
                     </tr>
