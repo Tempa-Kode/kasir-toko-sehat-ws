@@ -25,6 +25,13 @@ class TransaksiSeeder extends Seeder
             return;
         }
 
+        // Ambil produk kategori rokok (id = 4)
+        $produkRokok = Produk::where('kategori_id', 4)->get();
+
+        if ($produkRokok->isEmpty()) {
+            $this->command->warn('Tidak ada produk rokok di database (kategori_id = 4).');
+        }
+
         // Ambil user kasir (bisa kasir atau admin)
         $kasirs = User::whereIn('hak_akses', ['kasir', 'admin'])->get();
 
@@ -43,7 +50,7 @@ class TransaksiSeeder extends Seeder
         // Counter untuk nomor nota
         $notaCounter = 1;
 
-        $this->command->info('Mulai generate data transaksi...');   
+        $this->command->info('Mulai generate data transaksi...');
         $progressBar = $this->command->getOutput()->createProgressBar($startDate->diffInDays($endDate) + 1);
 
         // Loop untuk setiap hari
@@ -58,8 +65,10 @@ class TransaksiSeeder extends Seeder
             $transaksiPerJam = $this->distribusiTransaksi($jumlahTransaksi, $date);
 
             $totalOmsetHariIni = 0;
+            $transaksiCounter = 0; // Counter untuk menentukan transaksi mana yang mendapat rokok
 
             foreach ($transaksiPerJam as $index => $waktuTransaksi) {
+                $transaksiCounter++;
                 // Pilih kasir secara acak
                 $kasir = $kasirs->random();
 
@@ -88,8 +97,11 @@ class TransaksiSeeder extends Seeder
                     'kasir_id' => $kasir->id,
                 ]);
 
+                // Tentukan apakah transaksi ini mendapat rokok (selang-seling)
+                $beliRokok = ($transaksiCounter % 2 == 0) && !$produkRokok->isEmpty();
+
                 // Generate detail transaksi
-                $detailResult = $this->generateDetailTransaksi($transaksi, $produks, $targetTransaksi);
+                $detailResult = $this->generateDetailTransaksi($transaksi, $produks, $targetTransaksi, $produkRokok, $beliRokok);
 
                 // Update harga total transaksi
                 $transaksi->update([
@@ -166,7 +178,7 @@ class TransaksiSeeder extends Seeder
     /**
      * Generate detail transaksi
      */
-    private function generateDetailTransaksi($transaksi, $produks, $targetNilai)
+    private function generateDetailTransaksi($transaksi, $produks, $targetNilai, $produkRokok, $beliRokok = false)
     {
         $totalHarga = 0;
         $totalModal = 0;
@@ -174,8 +186,9 @@ class TransaksiSeeder extends Seeder
         // Jumlah item per transaksi (2-6 item) - Dikurangi agar lebih realistis
         $jumlahItem = rand(2, 6);
 
-        // Pilih produk secara acak
-        $produkTerpilih = $produks->random(min($jumlahItem, $produks->count()));
+        // Pilih produk secara acak (bukan rokok)
+        $produkNonRokok = $produks->where('kategori_id', '!=', 4);
+        $produkTerpilih = $produkNonRokok->random(min($jumlahItem, $produkNonRokok->count()));
 
         // Hitung alokasi per item
         $targetPerItem = $targetNilai / $jumlahItem;
@@ -228,6 +241,31 @@ class TransaksiSeeder extends Seeder
 
             $totalHarga += $subtotal;
             $totalModal += $subtotalModal;
+        }
+
+        // Tambahkan rokok jika transaksi ini mendapat rokok
+        if ($beliRokok && !$produkRokok->isEmpty()) {
+            // Pilih 1-2 jenis rokok
+            $jumlahJenisRokok = rand(1, min(2, $produkRokok->count()));
+            $rokokTerpilih = $produkRokok->random($jumlahJenisRokok);
+
+            foreach ($rokokTerpilih as $rokok) {
+                // Jumlah beli rokok 2-5 bungkus
+                $jumlahBeli = rand(2, 5);
+                $subtotal = $rokok->harga * $jumlahBeli;
+                $subtotalModal = $rokok->harga_modal * $jumlahBeli;
+
+                DetailTransaksi::create([
+                    'transaksi_id' => $transaksi->id,
+                    'produk_id' => $rokok->id,
+                    'jumlah' => $jumlahBeli,
+                    'subtotal' => $subtotal,
+                    'subtotal_modal' => $subtotalModal,
+                ]);
+
+                $totalHarga += $subtotal;
+                $totalModal += $subtotalModal;
+            }
         }
 
         return [
